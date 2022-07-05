@@ -49,9 +49,10 @@ NTPClient timeClient(ntpUDP, NTP_ADDRESS, GMT * 3600, NTP_INTERVAL);
 
 
 EspMQTTClient client(
-  "torsher.hopto.org",
+  "81.177.165.203",
   1883,
-  "Torsher"
+  "fifthfloor",
+  "root"
 );
 
 
