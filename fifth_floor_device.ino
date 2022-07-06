@@ -74,6 +74,8 @@ int timeonmnts = 0;
 int timeoffhrs = 0;
 int timeoffmnts = 0;
 
+boolean guard = false;
+
 struct {
   int id = 0;
   int value = 0;
@@ -104,7 +106,7 @@ String passStr = "";
 void(* resetFunc) (void) = 0;
 int error = 0;
 byte volume = 55;
-boolean speaker=false;
+boolean speaker = false;
 boolean mqtt = false;
 
 int r = 254;
@@ -228,10 +230,11 @@ void setup() {
 void loop() {
   server.handleClient();
   client.loop();
+  sttTick();
   time_tick();
   button_tick();
-    effect_tick();
-//  lightmusic(2);
+  effect_tick();
+  //  lightmusic(2);
   ring_ticker();
   sensor_tick();
   //  if(volume!=0) digitalWrite(SPQ_PIN, HIGH); else digitalWrite(SPQ_PIN, LOW);

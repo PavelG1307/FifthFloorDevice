@@ -61,28 +61,32 @@ void sensor_tick() {
           Serial.println("Достигнуто макс. кол-во датчиков!");
         }
       }
+      sendSens();
     }
   }
 
   if (millis() - timerSens > 10000) {
     timerSens = millis();
-    dataS = (String) id + " " + key() + " ";
-    for (int i = 0; i < CountSens; i++) {
-      dataS += sens[i].id;
-      dataS += " ";
-      dataS += sens[i].type;
-      dataS += " ";
-      //      if (timevalue - sens[i].timereq < 600 || sens[i].type > 10) {
-      dataS += sens[i].value;
-      dataS += " ";
-      dataS += (String) (((int) timevalue/60)-sens[i].timereq);
-      dataS += " ";
-      //      } else {
-      //        dataS += ":-1 ";
-      //        }
-    }
-    client.publish("torsh/sens", dataS);
+    sendSens();
   }
+}
+void sendSens() {
+  dataS = (String) key() + " ";
+  for (int i = 0; i < CountSens; i++) {
+    dataS += sens[i].id;
+    dataS += " ";
+    dataS += sens[i].type;
+    dataS += " ";
+    //      if (timevalue - sens[i].timereq < 600 || sens[i].type > 10) {
+    dataS += sens[i].value;
+    dataS += " ";
+    dataS += (String) (((int) timevalue / 60) - sens[i].timereq);
+    dataS += " ";
+    //      } else {
+    //        dataS += ":-1 ";
+    //        }
+  }
+  client.publish(ID_B_S + "/sens", dataS);
 }
 
 String key() {

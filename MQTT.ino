@@ -1,13 +1,26 @@
+int timerSTT = 0;
+const String ID_B_S = "3";
+void sttTick(){
+  if (millis() - timerSTT >= 30000) {
+    if (client.isConnected()){
+      client.publish(ID_B_S + "/stt", STT());
+      } else {
+        Serial.println("MQTT doesn't connected");
+      }
+    timerSTT = millis();
+    
+  }
+}
+  
 void onConnectionEstablished() {
   mqtt = true;
-  client.subscribe("torsh/brt", [] (const String & payload)  {
+  client.subscribe(ID_B_S + "/brt", [] (const String & payload)  {
     brt(payload);
 
   });
 
-  client.subscribe("torsh/req", [] (const String & payload)  {
+  client.subscribe(ID_B_S + "/req", [] (const String & payload)  {
     if (payload == "stt") client.publish("torsh/stt", STT());
-    
     if (payload.indexOf("rst") >= 0) {
       client.publish("torsh/err", "Reset!");
       rstf();
@@ -67,7 +80,7 @@ void onConnectionEstablished() {
 //  client.subscribe("torsh/sens", [] (const String & payload)  {
 //  });
 
-  client.subscribe("torsh/mode", [] (const String & payload)  {
+  client.subscribe(ID_B_S + "/mode", [] (const String & payload)  {
     currentMode = payload.toInt();
     if (brightnessls == 0) {
       brightnessls = 30;
@@ -75,14 +88,14 @@ void onConnectionEstablished() {
     FastLED.setBrightness(brightnessls);
     counter = 0;
   });
-  client.subscribe("torsh/modesettings", [] (const String & payload)  {
+  client.subscribe(ID_B_S + "/modesettings", [] (const String & payload)  {
     mds(payload);
   });
 
-  client.subscribe("torsh/spq", [] (const String & payload)  {
-    volume=(byte) payload.toInt();
-    
-  });
+//  client.subscribe(ID_B_S + "/spq", [] (const String & payload)  {
+//    volume=(byte) payload.toInt();
+//    
+//  });
 }
 
 void mds(String p) {
@@ -114,8 +127,6 @@ void brt(String p) {
 
 String STT() {
   String answ = "";
-  answ += (String) id + " ";
-
   answ += key() + " ";
   answ += (String) brightnessls + " ";
   int count = 0;
@@ -186,13 +197,9 @@ String STT() {
   } else {
     answ += "false ";
   }
-  answ += (String) timeonhrs;
+  answ += (String) (timeonhrs*60 + timeonmnts);
   answ += ",";
-  answ += (String) timeonmnts;
-  answ += ",";
-  answ += (String) timeoffhrs;
-  answ += ",";
-  answ += (String) timeoffmnts;
+  answ += (String) (timeoffhrs*60 + timeoffmnts);
   answ += " ";
 
   if (speaker) {
@@ -206,6 +213,8 @@ String STT() {
   answ += (String) currentMode;
   answ += " ";
   answ += (int) timevalue/60;
+  answ += " ";
+  answ += guard?"true":"false";
   Serial.println(answ);
   return answ;
 }

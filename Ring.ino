@@ -8,19 +8,19 @@ boolean manualoffring = false;
 void ring_ticker() {
   if ((millis() % 1000)) {
     for (int i = 0; i < 5; i++) {
-      if (alarm[i].time*60 - timevalue < DAWNTIME*60 && alarm[i].time*60 - timevalue > 0 && alarm[i].act && alarm[i].sinerise && !sunlightfl) {
+      if (alarm[i].time * 60 - timevalue < DAWNTIME * 60 && alarm[i].time * 60 - timevalue > 0 && alarm[i].act && alarm[i].sinerise && !sunlightfl) {
         sunlightfl = true;
         manualoffring = false;
         Serial.println("Dawn true!");
         alm = i;
       }
-      if (alarm[i].time == (int) timevalue/60 && alarm[i].act) {
+      if (alarm[i].time == (int) timevalue / 60 && alarm[i].act) {
         ringstart(i);
       }
     }
   }
   if (sunlightfl && !manualoffring && (millis() % 1000)) {
-    if (abs(timevalue - alarm[alm].time*60) < DAWNTIME*60) {
+    if (abs(timevalue - alarm[alm].time * 60) < DAWNTIME * 60) {
       sunlight();
       fill_solid(leds, NUM_LEDS, dawnColor);
       //      fillString(timeStr, CRGB::Black, false);
