@@ -1,31 +1,29 @@
 int timerSTT = 0;
 const String ID_B_S = "3";
-void sttTick(){
+void sttTick() {
   if (millis() - timerSTT >= 30000) {
-    if (client.isConnected()){
-      client.publish(ID_B_S + "/stt", STT());
-      } else {
-        Serial.println("MQTT doesn't connected");
-      }
+    if (client.isConnected()) {
+      client.publish(ID_B_S + "/stt", crypt(STT()));
+    } else {
+      Serial.println("MQTT doesn't connected");
+    }
     timerSTT = millis();
-    
   }
 }
-  
+
 void onConnectionEstablished() {
   mqtt = true;
-  client.subscribe(ID_B_S + "/brt", [] (const String & payload)  {
+  client.subscribe(ID_B_S + "/brt", [](const String& payload) {
     brt(payload);
-
   });
 
-  client.subscribe(ID_B_S + "/req", [] (const String & payload)  {
+  client.subscribe(ID_B_S + "/remote", [](const String& payload) {
     if (payload == "stt") client.publish("torsh/stt", STT());
     if (payload.indexOf("rst") >= 0) {
       client.publish("torsh/err", "Reset!");
       rstf();
     }
-    
+
     if (payload.indexOf("rmvsns") >= 0) {
       idS = payload.substring(7, 11).toInt();
       for (int i = 0; i < CountSens; i++) {
@@ -54,8 +52,7 @@ void onConnectionEstablished() {
           alarm[j].music = payload.substring(9 + i * 7, 10 + i * 7).toInt();
           if (payload.substring(10 + i * 7, 11 + i * 7) == "1") {
             alarm[j].sinerise = true;
-          }
-          else {
+          } else {
             alarm[j].sinerise = false;
           }
           alarm[j].act = true;
@@ -70,17 +67,24 @@ void onConnectionEstablished() {
             Serial.print("sunlight:");
             Serial.println(alarm[j].sinerise);
             Serial.print("до будильника:");
-            Serial.println(alarm[j].time - (int) timevalue / 60);
+            Serial.println(alarm[j].time - (int)timevalue / 60);
           }
         }
       }
     }
+
+    if (payload.indexOf("rules") >= 0) {
+      for (byte i = 0; i < (byte) ((payload.length() - 5) / 15); i++) {
+        setRule(
+          payload.substring(5 + i * 15, 9 + i * 15).toInt(),
+          payload.substring(9 + i * 15,10 + i * 15) == "0",
+          payload.substring(10 + i * 15, 14 + i * 15).toInt(),
+          payload.substring(14 + i * 15, 20 + i * 15));
+      }
+    }
   });
 
-//  client.subscribe("torsh/sens", [] (const String & payload)  {
-//  });
-
-  client.subscribe(ID_B_S + "/mode", [] (const String & payload)  {
+  client.subscribe(ID_B_S + "/mode", [](const String& payload) {
     currentMode = payload.toInt();
     if (brightnessls == 0) {
       brightnessls = 30;
@@ -88,14 +92,14 @@ void onConnectionEstablished() {
     FastLED.setBrightness(brightnessls);
     counter = 0;
   });
-  client.subscribe(ID_B_S + "/modesettings", [] (const String & payload)  {
+  client.subscribe(ID_B_S + "/modesettings", [](const String& payload) {
     mds(payload);
   });
 
-//  client.subscribe(ID_B_S + "/spq", [] (const String & payload)  {
-//    volume=(byte) payload.toInt();
-//    
-//  });
+  //  client.subscribe(ID_B_S + "/spq", [] (const String & payload)  {
+  //    volume=(byte) payload.toInt();
+  //
+  //  });
 }
 
 void mds(String p) {
@@ -126,13 +130,12 @@ void brt(String p) {
 
 
 String STT() {
-  String answ = "";
-  answ += key() + " ";
-  answ += (String) brightnessls + " ";
+  String answ = "1 ";
+  answ += (String)brightnessls + " ";
   int count = 0;
   for (int i = 0; i < 5; i++) {
     if (alarm[i].act) {
-      answ += (String) (i + 1);
+      answ += (String)(i + 1);
       answ += ",";
     } else {
       count++;
@@ -147,7 +150,7 @@ String STT() {
 
   for (int i = 0; i < 5; i++) {
     if (alarm[i].act) {
-      answ += (String) alarm[i].time;
+      answ += (String)alarm[i].time;
       answ += ",";
     }
   }
@@ -155,7 +158,7 @@ String STT() {
 
   if (count != 5) {
     answ.remove(answ.length() - 1);
-  }  else {
+  } else {
     answ += "0";
   }
   answ += " ";
@@ -174,20 +177,20 @@ String STT() {
 
   if (count != 5) {
     answ.remove(answ.length() - 1);
-  }  else {
+  } else {
     answ += "false";
   }
   answ += " ";
 
   for (int i = 0; i < 5; i++) {
     if (alarm[i].act) {
-      answ += (String) alarm[i].music;
+      answ += (String)alarm[i].music;
       answ += ",";
     }
   }
   if (count != 5) {
     answ.remove(answ.length() - 1);
-  }  else {
+  } else {
     answ += "0";
   }
   answ += " ";
@@ -197,9 +200,9 @@ String STT() {
   } else {
     answ += "false ";
   }
-  answ += (String) (timeonhrs*60 + timeonmnts);
+  answ += (String)(timeonhrs * 60 + timeonmnts);
   answ += ",";
-  answ += (String) (timeoffhrs*60 + timeoffmnts);
+  answ += (String)(timeoffhrs * 60 + timeoffmnts);
   answ += " ";
 
   if (speaker) {
@@ -209,12 +212,12 @@ String STT() {
   }
   answ += "55 ";
 
-  answ += (String) ((int) (analogRead(0) * 165) / 274) + " ";
-  answ += (String) currentMode;
+  answ += (String)((int)(analogRead(0) * 165) / 274) + " ";
+  answ += (String)currentMode;
   answ += " ";
-  answ += (int) timevalue/60;
+  answ += (int)timevalue / 60;
   answ += " ";
-  answ += guard?"true":"false";
+  answ += guard ? "true" : "false";
   Serial.println(answ);
   return answ;
 }

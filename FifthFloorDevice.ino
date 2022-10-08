@@ -18,11 +18,13 @@ byte gate[] = {255, 255, 255, 0};
 #define BTN3_PIN D7
 #define BTN_CLICK_TIME 1000
 
+#define RADIO_PIN D2
+
 #define DAWNTIME 10
 #define DAWNBRIGHT 150
 
 #define MAXSENS 5
-
+#define MAXRULES MAXSENS*2
 
 // ---------------- БИБЛИОТЕКИ -----------------
 #define NUM_LEDS 30
@@ -38,15 +40,14 @@ byte gate[] = {255, 255, 255, 0};
 #include <WiFiUdp.h>
 #include <NTPClient.h>
 #include "EspMQTTClient.h"
+#include <Gyver433.h>
 
 // ------------------- ТИПЫ --------------------
 ESP8266WebServer server(80);
 CRGB leds[NUM_LEDS];
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, NTP_ADDRESS, GMT * 3600, NTP_INTERVAL);
-
-
-
+Gyver433_RX<RADIO_PIN, 10> rx;
 
 EspMQTTClient client(
   "81.177.165.203",
@@ -81,7 +82,15 @@ struct {
   int value = 0;
   byte type = 0;
   int timereq = 0;
+  byte key = 0;
 } sens[MAXSENS];
+
+struct {
+  int id = 0;
+  bool more = false;
+  int value = 0;
+  String data = "";
+} rules[MAXRULES];
 
 int idS;
 byte CountSens = 0;
@@ -131,6 +140,8 @@ void setup() {
   pinMode(BTN2_PIN, INPUT);
   pinMode(BTN3_PIN, INPUT);
 
+  defRules();
+
   FastLED.addLeds<WS2812B, LED_PIN, GRB>(leds, NUM_LEDS);
 
   FastLED.setMaxPowerInVoltsAndMilliamps(5, 2000);
@@ -138,7 +149,7 @@ void setup() {
   FastLED.show();
   //  pinMode(SPQ_PIN, OUTPUT);
   //  digitalWrite(SPQ_PIN, LOW);
-  Serial.begin(74880);
+  Serial.begin(9600);
   EEPROM.begin(50);
   delay(500);
   MODEWIFI = EEPROM.read(0);
@@ -236,6 +247,6 @@ void loop() {
   effect_tick();
   //  lightmusic(2);
   ring_ticker();
-  sensor_tick();
-  //  if(volume!=0) digitalWrite(SPQ_PIN, HIGH); else digitalWrite(SPQ_PIN, LOW);
+  // sensor_tick();
+  // //  if(volume!=0) digitalWrite(SPQ_PIN, HIGH); else digitalWrite(SPQ_PIN, LOW);
 }

@@ -1,14 +1,8 @@
 void handleRoot() {
-  mqtt = false;
-  if (server.argName(0) == "ACT") {
-    if (MODEWIFI == 1) {
-      server.send(200, "text/plain", "true");
-    } else {
-      server.send(200, "text/plain", "false");
-    }
+  if (server.argName(0) == "active") {
+    server.send(200, "text/plain", "true");
   }
-
-  if (server.argName(0) == "SSD") {
+  if (server.argName(0) == "ssid") {
     if (MODEWIFI == 0) {
       server.send(200, "text/plain", "connecting");
       server.arg(0).toCharArray(ssid, server.arg(0).length() + 1);
@@ -27,8 +21,6 @@ void handleRoot() {
         EEPROM.write(i + 15, pass[i - 2]);
         delay(100);
       }
-
-
       EEPROM.write(0, 1);
       if (EEPROM.commit()) {
         delay(500);
