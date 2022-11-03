@@ -13,17 +13,22 @@ void sttTick() {
 
 void onConnectionEstablished() {
   mqtt = true;
-  client.subscribe(ID_B_S + "/brt", [](const String& payload) {
-    brt(payload);
-  });
 
   client.subscribe(ID_B_S + "/remote", [](const String& payload) {
+    if (payload.indexOf("MODE") >= 0) {
+      currentMode = payload.substring(4).toInt();
+      if (brightnessls == 0) {
+        brightnessls = 30;
+      }
+      FastLED.setBrightness(brightnessls);
+      counter = 0;
+    }
+    if (payload.indexOf("BRT") >= 0) brt(payload);
     if (payload == "stt") client.publish("torsh/stt", STT());
     if (payload.indexOf("rst") >= 0) {
       client.publish("torsh/err", "Reset!");
       rstf();
     }
-
     if (payload.indexOf("rmvsns") >= 0) {
       idS = payload.substring(7, 11).toInt();
       for (int i = 0; i < CountSens; i++) {
@@ -39,7 +44,6 @@ void onConnectionEstablished() {
         }
       }
     }
-
     if (payload.indexOf("rng") >= 0) {
       byte count = payload.substring(3, 4).toInt();
       for (int k = 0; k < 5; k++) {
@@ -72,26 +76,17 @@ void onConnectionEstablished() {
         }
       }
     }
-
     if (payload.indexOf("rules") >= 0) {
-      for (byte i = 0; i < (byte) ((payload.length() - 5) / 15); i++) {
+      for (byte i = 0; i < (byte)((payload.length() - 5) / 15); i++) {
         setRule(
           payload.substring(5 + i * 15, 9 + i * 15).toInt(),
-          payload.substring(9 + i * 15,10 + i * 15) == "0",
+          payload.substring(9 + i * 15, 10 + i * 15) == "0",
           payload.substring(10 + i * 15, 14 + i * 15).toInt(),
           payload.substring(14 + i * 15, 20 + i * 15));
       }
     }
   });
 
-  client.subscribe(ID_B_S + "/mode", [](const String& payload) {
-    currentMode = payload.toInt();
-    if (brightnessls == 0) {
-      brightnessls = 30;
-    }
-    FastLED.setBrightness(brightnessls);
-    counter = 0;
-  });
   client.subscribe(ID_B_S + "/modesettings", [](const String& payload) {
     mds(payload);
   });
