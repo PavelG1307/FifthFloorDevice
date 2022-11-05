@@ -4,7 +4,7 @@ byte data[12];
 String dataS;
 
 void alarms(String s) {
-  client.publish("torsh/alarm", (String)id + " 123 " + s);
+  client.publish(ID_B_S + "/alarm", s);
 }
 
 void sendSens() {
@@ -17,7 +17,7 @@ void sendSens() {
     //      if (timevalue - sens[i].timereq < 600 || sens[i].type > 10) {
     dataS += sens[i].value;
     dataS += " ";
-    dataS += (String)(((int)timevalue / 60) - sens[i].timereq);
+    dataS += (String) sens[i].timereq;
     dataS += " ";
     //      } else {
     //        dataS += ":-1 ";
@@ -29,15 +29,18 @@ void sendSens() {
 int valuesens = 0;
 String topicname = "";
 void sensor_tick() {
-  if (rx.gotData()) {
+  if (rx.tick()) {
     flsens = false;
     idS = (int)(rx.buffer[0] << 8 | rx.buffer[1]);
+    Serial.print("Датчик: ");
+    Serial.println(idS);
     for (int i = 0; i < CountSens; i++) {
-      if (sens[i].id == rx.buffer[0]) {
+      if (sens[i].id == idS) {
+        Serial.print("Значение: ");
+        Serial.println(rx.buffer[4]);
         sens[i].value = rx.buffer[4];
-        if (sens[i].type > 10 && sens[i].value > 0) alarms((String)sens[i].id + ":" + sens[i].type);
+        if (sens[i].type > 10 &&  sens[i].type < 20 && sens[i].value > 0) alarms((String)sens[i].id + ":" + sens[i].type);
         sens[i].timereq = timevalue;
-        checkRules(idS, sens[i].value);
         flsens = true;
       }
     }
@@ -49,6 +52,7 @@ void sensor_tick() {
       sens[CountSens].timereq = timevalue;
       CountSens++;
     }
+    checkRules(idS, rx.buffer[4]);
     sendSens();
   }
 

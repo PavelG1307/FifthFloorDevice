@@ -1,5 +1,4 @@
 int timerSTT = 0;
-const String ID_B_S = "3";
 void sttTick() {
   if (millis() - timerSTT >= 30000) {
     if (client.isConnected()) {
@@ -13,88 +12,109 @@ void sttTick() {
 
 void onConnectionEstablished() {
   mqtt = true;
-
-  client.subscribe(ID_B_S + "/remote", [](const String& payload) {
-    if (payload.indexOf("MODE") >= 0) {
-      currentMode = payload.substring(4).toInt();
-      if (brightnessls == 0) {
-        brightnessls = 30;
-      }
-      FastLED.setBrightness(brightnessls);
-      counter = 0;
-    }
-    if (payload.indexOf("BRT") >= 0) brt(payload);
-    if (payload == "stt") client.publish("torsh/stt", STT());
-    if (payload.indexOf("rst") >= 0) {
-      client.publish("torsh/err", "Reset!");
-      rstf();
-    }
-    if (payload.indexOf("rmvsns") >= 0) {
-      idS = payload.substring(7, 11).toInt();
-      for (int i = 0; i < CountSens; i++) {
-        if (sens[i].id == idS) {
-          flsens = true;
-          CountSens--;
+  if (secretStr != "" && secretStr != "00000") {
+    client.subscribe(secretStr, [](const String& payload) {
+      setID(payload);
+      resetFunc();
+    });
+    client.publish("common", "CT " + secretStr);
+  } else {
+    client.subscribe(ID_B_S + "/remote", [](const String& payload) {
+      if (payload.indexOf("MODE") >= 0) {
+        currentMode = payload.substring(4).toInt();
+        if (brightnessls == 0) {
+          brightnessls = 30;
         }
-        if (flsens) {
-          sens[i].id = sens[i + 1].id;
-          sens[i].value = sens[i + 1].value;
-          sens[i].type = sens[i + 1].type;
-          sens[i].timereq = sens[i + 1].timereq;
-        }
+        FastLED.setBrightness(brightnessls);
+        counter = 0;
       }
-    }
-    if (payload.indexOf("rng") >= 0) {
-      byte count = payload.substring(3, 4).toInt();
-      for (int k = 0; k < 5; k++) {
-        alarm[k].act = false;
+      if (payload.indexOf("BRT") >= 0) brt(payload);
+      if (payload == "stt") client.publish("torsh/stt", STT());
+      if (payload.indexOf("rst") >= 0) {
+        client.publish("torsh/err", "Reset!");
+        rstf();
       }
-      if (count != 0) {
-        for (int i = 0; i < count; i++) {
-          int j = payload.substring(4 + i * 7, 5 + i * 7).toInt();
-          alarm[j].time = payload.substring(5 + i * 7, 9 + i * 7).toInt();
-          alarm[j].music = payload.substring(9 + i * 7, 10 + i * 7).toInt();
-          if (payload.substring(10 + i * 7, 11 + i * 7) == "1") {
-            alarm[j].sinerise = true;
-          } else {
-            alarm[j].sinerise = false;
+      if (payload.indexOf("rmvsns") >= 0) {
+        idS = payload.substring(7, 11).toInt();
+        for (int i = 0; i < CountSens; i++) {
+          if (sens[i].id == idS) {
+            flsens = true;
+            CountSens--;
           }
-          alarm[j].act = true;
-
-          if (alarm[j].act) {
-            Serial.print("Set ring number: ");
-            Serial.println(j);
-            Serial.print("On: ");
-            Serial.println(time_form(alarm[j].time * 60));
-            Serial.print("music:");
-            Serial.println(alarm[j].music);
-            Serial.print("sunlight:");
-            Serial.println(alarm[j].sinerise);
-            Serial.print("до будильника:");
-            Serial.println(alarm[j].time - (int)timevalue / 60);
+          if (flsens) {
+            sens[i].id = sens[i + 1].id;
+            sens[i].value = sens[i + 1].value;
+            sens[i].type = sens[i + 1].type;
+            sens[i].timereq = sens[i + 1].timereq;
           }
         }
       }
-    }
-    if (payload.indexOf("rules") >= 0) {
-      for (byte i = 0; i < (byte)((payload.length() - 5) / 15); i++) {
-        setRule(
-          payload.substring(5 + i * 15, 9 + i * 15).toInt(),
-          payload.substring(9 + i * 15, 10 + i * 15) == "0",
-          payload.substring(10 + i * 15, 14 + i * 15).toInt(),
-          payload.substring(14 + i * 15, 20 + i * 15));
+      if (payload.indexOf("rng") >= 0) {
+        byte count = payload.substring(3, 4).toInt();
+        for (int k = 0; k < 5; k++) {
+          alarm[k].act = false;
+        }
+        if (count != 0) {
+          for (int i = 0; i < count; i++) {
+            int j = payload.substring(4 + i * 7, 5 + i * 7).toInt();
+            alarm[j].time = payload.substring(5 + i * 7, 9 + i * 7).toInt();
+            alarm[j].music = payload.substring(9 + i * 7, 10 + i * 7).toInt();
+            if (payload.substring(10 + i * 7, 11 + i * 7) == "1") {
+              alarm[j].sinerise = true;
+            } else {
+              alarm[j].sinerise = false;
+            }
+            alarm[j].act = true;
+
+            if (alarm[j].act) {
+              Serial.print("Set ring number: ");
+              Serial.println(j);
+              Serial.print("On: ");
+              Serial.println(time_form(alarm[j].time * 60));
+              Serial.print("music:");
+              Serial.println(alarm[j].music);
+              Serial.print("sunlight:");
+              Serial.println(alarm[j].sinerise);
+              Serial.print("до будильника:");
+              Serial.println(alarm[j].time - (int)timevalue / 60);
+            }
+          }
+        }
       }
-    }
-  });
+      if (payload.indexOf("rules") >= 0) {
+        for (byte i = 0; i < (byte)((payload.length() - 5) / 15); i++) {
+          setRule(
+            payload.substring(5 + i * 15, 9 + i * 15).toInt(),
+            payload.substring(9 + i * 15, 10 + i * 15) == "0",
+            payload.substring(10 + i * 15, 14 + i * 15).toInt(),
+            payload.substring(14 + i * 15, 20 + i * 15));
+        }
+      }
+    });
 
-  client.subscribe(ID_B_S + "/modesettings", [](const String& payload) {
-    mds(payload);
-  });
+    client.subscribe(ID_B_S + "/modesettings", [](const String& payload) {
+      mds(payload);
+    });
 
-  //  client.subscribe(ID_B_S + "/spq", [] (const String & payload)  {
-  //    volume=(byte) payload.toInt();
-  //
-  //  });
+    //  client.subscribe(ID_B_S + "/spq", [] (const String & payload)  {
+    //    volume=(byte) payload.toInt();
+    //
+    //  });
+  }
+}
+
+void setID(String id) {
+  Serial.println(id);
+  EEPROM.write(1, id.toInt());
+  delay(100);
+  for (byte i = 32; i < 37; i++) {
+    EEPROM.write(i, '0');
+    delay(100);
+  }
+  if (EEPROM.commit()) {
+    delay(500);
+    Serial.println("EEPROM commited!");
+  }
 }
 
 void mds(String p) {
@@ -207,7 +227,7 @@ String STT() {
   }
   answ += "55 ";
 
-  answ += (String)((int)(analogRead(0) * 165) / 274) + " ";
+  answ += (String)((int)(analogRead(A0) * 165) / 274) + " ";
   answ += (String)currentMode;
   answ += " ";
   answ += (int)timevalue / 60;

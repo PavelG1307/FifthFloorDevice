@@ -12,13 +12,16 @@ byte gate[] = {255, 255, 255, 0};
 // -------- ПИНЫ -------
 #define LED_PIN D0   //лента
 #define NUM_LEDS 30   //кол-во светодиодов
-#define SPQ_PIN 9    //включение колонки
-#define BTN1_PIN D5
-#define BTN2_PIN D6
-#define BTN3_PIN D7
+#define SPQ_PIN D1    //включение колонки
+#define BTN1_PIN D2
+#define BTN2_PIN D3
+#define BTN3_PIN D4
 #define BTN_CLICK_TIME 1000
 
-#define RADIO_PIN D2
+#define RADIO_PIN D5
+#define RADIO_VCC D6
+#define G433_SPEED 1000
+#define RADIO_BUF_SIZE 7
 
 #define DAWNTIME 10
 #define DAWNBRIGHT 150
@@ -47,7 +50,7 @@ ESP8266WebServer server(80);
 CRGB leds[NUM_LEDS];
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, NTP_ADDRESS, GMT * 3600, NTP_INTERVAL);
-Gyver433_RX<RADIO_PIN, 10> rx;
+Gyver433_RX<RADIO_PIN, RADIO_BUF_SIZE> rx;
 
 EspMQTTClient client(
   "81.177.165.203",
@@ -93,6 +96,7 @@ struct {
 } rules[MAXRULES];
 
 int idS;
+String ID_B_S = "";
 byte CountSens = 0;
 boolean flsens = false;
 
@@ -112,6 +116,8 @@ char ssid[15] = "";
 String ssidStr = "";
 char pass[15] = "";
 String passStr = "";
+char secret[5] = "";
+String secretStr = "";
 void(* resetFunc) (void) = 0;
 int error = 0;
 byte volume = 55;
@@ -147,15 +153,17 @@ void setup() {
   FastLED.setMaxPowerInVoltsAndMilliamps(5, 2000);
   FastLED.setBrightness(0);
   FastLED.show();
+  pinMode(RADIO_VCC, OUTPUT);
+  digitalWrite(RADIO_VCC, HIGH);
   //  pinMode(SPQ_PIN, OUTPUT);
   //  digitalWrite(SPQ_PIN, LOW);
   Serial.begin(9600);
   EEPROM.begin(50);
-  delay(500);
+  delay(50);
   MODEWIFI = EEPROM.read(0);
-  delay(500);
-
-
+  delay(50);
+  ID_B_S = (String) ((byte) EEPROM.read(1));
+  delay(50);
   if (MODEWIFI == 1) {
 
     WiFi.disconnect();
@@ -163,7 +171,6 @@ void setup() {
       ssidStr += (char) EEPROM.read(i);
       delay(50);
       passStr += (char) EEPROM.read(i + 15);
-
     }
     passStr.toCharArray(pass, passStr.length());
     ssidStr.toCharArray(ssid, ssidStr.length());
@@ -174,13 +181,14 @@ void setup() {
     Serial.print("password: ");
     Serial.println(autoConnectPass);
 
-    //    WiFi.config(IPAddress(IP[0], IP[1], IP[2], IP[3]),
-    //                IPAddress(IP[0], IP[1], IP[2], 1),
-    //                IPAddress(255, 255, 255, 0),
-    //                IPAddress(8, 8, 8, 8));
     WiFi.mode(WIFI_STA);
     WiFi.begin(autoConnectSSID, autoConnectPass);
     delay(500);
+    for (byte i = 32; i < 37; i++) {
+      secretStr += (char) EEPROM.read(i);
+      delay(50);
+    }
+    Serial.println(secretStr);
   } else {
     WiFi.disconnect();
     WiFi.mode(WIFI_AP);
@@ -197,21 +205,6 @@ void setup() {
       delay(200);
     }
     Serial.println("Connected to WiFi! IP address: " + WiFi.localIP().toString());
-    //
-    //    //  "Маска подсети: "
-    //
-    //        for (int i = 0; i < 4; i++) {
-    //          subnet[i] = WiFi.subnetMask()[i];
-    //          gate[i] = WiFi.gatewayIP()[i];
-    //          if (subnet[i] == 255) {
-    //            IP[i] = gate[i];
-    //          }
-    //        }
-    //        WiFi.config(IPAddress(IP[0], IP[1], IP[2], IP[3]),
-    //                    IPAddress(gate[0], gate[1], gate[2], gate[3]),
-    //                    IPAddress(subnet[0], subnet[1], subnet[2], subnet[3]),
-    //                    IPAddress(8, 8, 8, 8));
-    //        WiFi.reconnect();
     while (WiFi.status() != WL_CONNECTED)
     {
       delay(500);
@@ -227,14 +220,12 @@ void setup() {
   timeClient.update();
 
   timevalue = (timeClient.getHours() * 60 + timeClient.getMinutes()) * 60 + timeClient.getSeconds();
-
+  server.enableCORS(true);
   server.on("/a", handleRoot);
   server.begin();
   //  Serial.println("New IP address: " + WiFi.localIP().toString());
   FastLED.setBrightness(brightnessls);
   FastLED.show();
-
-
 }
 
 
@@ -244,9 +235,9 @@ void loop() {
   sttTick();
   time_tick();
   button_tick();
-  effect_tick();
+  // effect_tick();
   //  lightmusic(2);
-  ring_ticker();
-  // sensor_tick();
+  // ring_ticker();
+  sensor_tick();
   // //  if(volume!=0) digitalWrite(SPQ_PIN, HIGH); else digitalWrite(SPQ_PIN, LOW);
 }
